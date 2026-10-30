@@ -1,0 +1,36 @@
+{
+  "name": "omp-assay",
+  "version": "0.1.0",
+  "description": "Lab-grade quality gate for omp: CRAP, structural duplication and mutation testing, shipped as one skill, one tool and a commit guard.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "omp",
+    "pi-package",
+    "quality-gate",
+    "crap",
+    "mutation-testing",
+    "duplication"
+  ],
+  "files": [
+    "skills",
+    "extensions",
+    "hooks",
+    "lib",
+    "vendor",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "bun test"
+  },
+  "omp": {
+    "description": "Quality gate: CRAP, structural duplication and mutation testing, with a commit guard.",
+    "extensions": [
+      "./extensions/assay.ts"
+    ]
+  },
+  "devDependencies": {
+    "zod": "^4.6.7"
+  }
+}
