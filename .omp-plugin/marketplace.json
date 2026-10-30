@@ -1,0 +1,15 @@
+{
+  "name": "assay",
+  "owner": {
+    "name": "assay"
+  },
+  "plugins": [
+    {
+      "name": "omp-assay",
+      "description": "Quality gate for omp: CRAP below 10, structural duplication review, mutation testing. Ships the assay skill, a typed assay tool and a commit guard.",
+      "version": "0.1.0",
+      "category": "quality",
+      "source": "./plugins/assay"
+    }
+  ]
+}
