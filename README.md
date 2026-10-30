@@ -3,14 +3,14 @@
 An omp plugin marketplace: deterministic quality gates for agent-written code.
 
 ```sh
-omp plugin marketplace add z3r0xc/assay
+omp plugin marketplace add lukavtz/assay
 omp plugin install omp-assay@assay
 ```
 
 Or install the plugin directly, without the catalog:
 
 ```sh
-omp plugin install github:z3r0xc/assay#v0.1.0
+omp plugin install github:lukavtz/assay#v0.1.0
 ```
 
 ## Catalog
