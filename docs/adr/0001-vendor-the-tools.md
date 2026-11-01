@@ -1,6 +1,6 @@
 # ADR 0001 — Vendor the measurement tools
 
-Status: accepted (2026-10-30)
+Status: superseded by [0003](0003-own-engine.md) (2026-11-01)
 
 ## Context
 

@@ -26,26 +26,30 @@ Assay turns the ub-mode method into measurements the agent cannot talk its way p
 | Check | Rule | Failure meaning |
 |---|---|---|
 | CRAP | `CC² × (1 − coverage)³ + CC < threshold` per function | Either the function is too complex or the tests do not reach it |
-| Duplication | no structural candidate at Jaccard ≥ 0.82 with `--min-lines 3` | Two forms share a shape and should share code |
+| Duplication | no structural candidate at Jaccard ≥ 0.82, minimum 4 lines and 20 fingerprint nodes | Two forms share a shape and should share code |
 | Mutation | no surviving mutant | A test asserts the result but not the behavior |
 
-Exit codes from the vendored tools are mapped, not passed through blindly: mutator `2` means a red baseline (tests broken), `3` means survivors.
+All three run in-process on a vendored tree-sitter WebAssembly build. Coverage joins from LCOV or a Go coverprofile; a file absent from the report scores 0%.
 
 ## Acceptance
 
 1. `bun test` passes.
-2. First `assay` call on a clean machine creates `.venv` and installs the vendored packages, with no manual step.
+2. A fresh clone measures a project with no install step: the tree-sitter runtime and grammars ship in `assets/`.
 3. A repo with a CRAP ≥ 10 function fails; adding behavior tests or splitting it passes.
 4. `git commit` in a repo without a passing record is blocked with an actionable reason.
 5. `git commit` after a passing record, with no source edits since, is allowed.
-6. Windows without Developer Mode works (junction fallback in mutator, `Scripts\python.exe` detection in crapper).
+6. Windows without Developer Mode works: no symlinks, no Python, no virtualenv.
 7. A target that starts with `-`, or resolves outside the project, is refused before any subprocess runs.
-8. `.metrics` or the record file being a symlink refuses the write; `.metrics/dry.edn` being a symlink is ignored.
-9. Every subprocess is bounded (15 minute timeout, 200 KB captured).
+8. `.metrics` or the record file being a symlink refuses the write.
+9. Test and coverage subprocesses are bounded by timeout; analysis itself spawns nothing.
+
+## Languages
+
+Python, TypeScript/TSX/JavaScript, Go, Rust, Java. A profile is data: function node types, decision node types, branch operators, test-file patterns, default test command. Adding a language is a profile entry plus a `.wasm` asset.
 
 ## Non-goals
 
 - Sandboxing. The plugin runs with the user's permissions, as omp documents for all plugins.
 - Autofixing findings. The agent fixes; assay measures.
 - Replacing CI. The same commands can run there, but the plugin targets the edit loop.
-- Vendored-tool authorship. Upstream source is pinned and patched minimally; see `vendor/UPSTREAM.md`.
+- Parser authorship. tree-sitter and the grammars are vendored as assets, not reimplemented; see `assets/README.md`.
