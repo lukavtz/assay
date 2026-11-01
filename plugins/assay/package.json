@@ -1,7 +1,7 @@
 {
   "name": "omp-assay",
-  "version": "0.1.0",
-  "description": "Lab-grade quality gate for omp: CRAP, structural duplication and mutation testing, shipped as one skill, one tool and a commit guard.",
+  "version": "0.2.0",
+  "description": "Quality gate for omp: CRAP, structural duplication and mutation testing, with its own TypeScript engine.",
   "type": "module",
   "license": "MIT",
   "keywords": [
@@ -17,7 +17,7 @@
     "extensions",
     "hooks",
     "lib",
-    "vendor",
+    "assets",
     "README.md",
     "LICENSE"
   ],
@@ -31,6 +31,8 @@
     ]
   },
   "devDependencies": {
+    "tree-sitter-wasms": "^0.1.13",
+    "web-tree-sitter": "0.22.6",
     "zod": "^4.6.7"
   }
 }
