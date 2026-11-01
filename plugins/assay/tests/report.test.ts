@@ -1,92 +1,69 @@
 import { describe, expect, test } from "bun:test";
-import { coverageGap, duplicateLines, mutationOutcome, remediation, tail, worstRows } from "../lib/report.ts";
+import type { ScoredUnit } from "../lib/engine/project.ts";
+import { duplicateLines, renderTable, remediation, tail, type Check } from "../lib/report.ts";
 
-const CRAP_STDOUT = ["CRAP Report", "===========", "Languages: python", "", "Function   Namespace   CC   Cov%   CRAP", "--------------------------------------------------"]
-  .concat(Array.from({ length: 14 }, (_, i) => `f${i}   calc   ${i}   10.0%   ${i}.0`))
-  .join("\n");
+const unit = (name: string, complexity: number, coverage: number | null): ScoredUnit => ({
+  name,
+  file: "src/a.py",
+  language: "python",
+  namespace: "(top level)",
+  startLine: 1,
+  endLine: 5,
+  complexity,
+  fingerprint: new Set([1, 2]),
+  coverage,
+  crap: coverage === null ? null : complexity ** 2 * (1 - coverage) ** 3 + complexity,
+});
 
-describe("worstRows", () => {
-  test("keeps the header and the ten worst rows", () => {
-    const rows = worstRows(CRAP_STDOUT).split("\n");
+describe("renderTable", () => {
+  test("sorts the worst score first and keeps the header", () => {
+    const rows = renderTable([unit("easy", 1, 1), unit("bad", 5, 0), unit("unknown", 2, null)]).split("\n");
     expect(rows[0].startsWith("Function")).toBe(true);
-    expect(rows).toHaveLength(11);
-    expect(rows.at(-1)).toContain("f9");
+    expect(rows[1]).toContain("bad");
+    expect(rows.at(-1)).toContain("unknown");
   });
 
-  test("falls back to the first twelve lines when there is no table", () => {
-    const rows = worstRows(Array.from({ length: 20 }, (_, i) => `line ${i}`).join("\n")).split("\n");
-    expect(rows).toHaveLength(12);
-    expect(rows[0]).toBe("line 0");
-  });
-});
-
-describe("coverageGap", () => {
-  test("returns the line that explains a missing coverage tool", () => {
-    const stderr = "noise\ncoverage is missing in C:/repo. Python coverage will score 0%.\nmore";
-    expect(coverageGap(stderr)).toBe("coverage is missing in C:/repo. Python coverage will score 0%.");
+  test("prints N/A when coverage is absent", () => {
+    expect(renderTable([unit("unknown", 2, null)])).toContain("N/A");
   });
 
-  test("returns an empty string when coverage ran", () => {
-    expect(coverageGap("+ pytest -q\n3 passed")).toBe("");
-  });
-});
-
-describe("mutationOutcome", () => {
-  test("scan counts listed sites instead of trusting the exit code", () => {
-    const stdout = "Scan: 3 mutation sites in src/a.py\n  src/a.py:2 >= -> >  [defn/grade]\n  src/a.py:9 + -> -  [defn/add]";
-    const check = mutationOutcome("scan", { code: 0, stdout, stderr: "" });
-    expect(check.ok).toBe(true);
-    expect(check.note).toBe("2 site(s)");
-  });
-
-  test("a clean run kills every mutant", () => {
-    expect(mutationOutcome("run", { code: 0, stdout: "", stderr: "" }).ok).toBe(true);
-  });
-
-  test("exit 2 is a red baseline, not a surviving mutant", () => {
-    const check = mutationOutcome("run", { code: 2, stdout: "", stderr: "" });
-    expect(check.ok).toBe(false);
-    expect(check.note).toBe("baseline tests failed");
-  });
-
-  test("exit 3 reports survivors", () => {
-    const check = mutationOutcome("run", { code: 3, stdout: "", stderr: "" });
-    expect(check.note).toBe("surviving mutants");
-  });
-
-  test("any other exit is a tool error", () => {
-    expect(mutationOutcome("run", { code: 1, stdout: "", stderr: "boom" }).note).toBe("mutator error");
-  });
-});
-
-describe("remediation", () => {
-  test("names the first move for a failing CRAP check under coverage", () => {
-    const text = remediation(
-      {
-        crap: { ok: false, exit: 2, note: "CRAP above 10" },
-        duplication: { ok: true, exit: 0, note: "" },
-        mutation: { ok: true, exit: 0, note: "" },
-      },
-      "run",
-    );
-    expect(text).toContain("behavior test");
-  });
-
-  test("stays quiet when every check passes", () => {
-    const pass = { ok: true, exit: 0, note: "" };
-    expect(remediation({ crap: pass, duplication: pass, mutation: pass }, "skip")).toBe("Fix: ");
+  test("caps the number of rows", () => {
+    const many = Array.from({ length: 30 }, (_, index) => unit(`f${index}`, index + 1, 0.5));
+    expect(renderTable(many).split("\n")).toHaveLength(11);
   });
 });
 
 describe("duplicateLines", () => {
-  test("keeps duplicate headers and locations only", () => {
-    const stdout = "DUPLICATE score=1.00\n  src/a.py:1-3\n  src/a.py:6-8\nWrote .metrics/dry.edn";
-    expect(duplicateLines(stdout).split("\n")).toEqual(["DUPLICATE score=1.00", "  src/a.py:1-3", "  src/a.py:6-8"]);
+  test("names both sides with location and score", () => {
+    const text = duplicateLines([
+      {
+        score: 1,
+        language: "python",
+        left: { file: "a.py", name: "alpha", startLine: 1, endLine: 4, nodes: 12 },
+        right: { file: "a.py", name: "beta", startLine: 7, endLine: 10, nodes: 12 },
+      },
+    ]);
+    expect(text).toContain("DUPLICATE 1.00 python");
+    expect(text).toContain("a.py:1-4 (alpha)");
+    expect(text).toContain("a.py:7-10 (beta)");
+  });
+});
+
+describe("remediation", () => {
+  const pass: Check = { ok: true, exit: 0, note: "" };
+
+  test("points at coverage first when the gate ran with it", () => {
+    const text = remediation({ crap: { ok: false, exit: 1, note: "" }, duplication: pass, mutation: pass }, "existing", 3);
+    expect(text).toContain("behavior test");
   });
 
-  test("caps a long report", () => {
-    const stdout = Array.from({ length: 30 }, () => "  a.py:1-3").join("\n");
-    expect(duplicateLines(stdout).split("\n")).toHaveLength(12);
+  test("asks for splitting when coverage was skipped", () => {
+    const text = remediation({ crap: { ok: false, exit: 1, note: "" }, duplication: pass, mutation: pass }, "skip", 3);
+    expect(text).toContain("split the function");
+  });
+
+  test("explains an empty parse", () => {
+    expect(remediation({ crap: pass, duplication: pass, mutation: pass }, "skip", 0)).toContain("No function was recognised");
   });
 });
 

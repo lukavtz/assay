@@ -1,47 +1,53 @@
 # omp-assay
 
-Quality gate for [omp](https://omp.sh): the assay method as a skill, backed by deterministic checks instead of good intentions.
+Quality gate for [omp](https://omp.sh): the assay method as a skill, backed by measurements instead of good intentions.
 
-A model that is told to keep functions simple agrees and moves on. This plugin gives it a tool that returns measurements and fails a commit when the numbers are bad.
+A model told to keep functions simple agrees and moves on. This plugin gives it numbers and stops a commit while they are bad.
 
 ## What ships
 
 | Surface | Path | Purpose |
 |---|---|---|
-| Skill | `skills/assay/SKILL.md` | The three phases: make it work, make it right, practice |
-| Tool | `tools/assay/index.ts` | `assay` — runs crapper, dryer and mutator, writes `.metrics/assay.json` |
-| Hook | `hooks/pre/commit-gate.ts` | Blocks `git commit` when the gate result is missing, failed, or older than a staged source file |
-| Vendored tools | `vendor/` | crapper, dryer, mutator, and the upstream assay skill |
+| Skill | `skills/assay/SKILL.md` | Three phases: make it work, make it right, practice |
+| Tool | `extensions/assay.ts` → `lib/tool.ts` | `assay` — measures, writes `.metrics/assay.json` |
+| Engine | `lib/engine/` | Parsing, complexity, coverage join, duplication, mutation |
+| Hook | `hooks/pre/commit-gate.ts` | Blocks `git commit` on a missing, failed or stale result |
+| Assets | `assets/` | tree-sitter runtime and six grammars, vendored |
+
+No Python. No virtualenv. No install step.
 
 ## Checks
 
-| Check | Tool | Fails when |
-|---|---|---|
-| CRAP per function | [crapper](https://github.com/unclebob/crapper) | any score ≥ threshold (default 10) |
-| Structural duplication | [dryer](https://github.com/unclebob/dryer) | any candidate at score ≥ 0.82 |
-| Mutation coverage | [unclebob/mutator](https://github.com/unclebob/mutator) | a mutant survives |
+| Check | Rule |
+|---|---|
+| CRAP per function | `CC² × (1 − coverage)³ + CC < threshold` (default 10) |
+| Structural duplication | No pair at Jaccard ≥ 0.82 |
+| Mutation | No surviving mutant |
 
-CRAP is `CC² × (1 − coverage)³ + CC`. A function with high coverage but CRAP ≥ 10 is simply too complex; a function with low coverage scores badly even when it is simple.
+Coverage is read from `coverage/lcov.info` (coverage.py, c8, vitest, cargo llvm-cov, tarpaulin) or `coverage.out` (Go). `coverage: "run"` executes your command first; `"skip"` measures complexity only.
+
+## Languages
+
+Python, TypeScript/TSX/JavaScript, Go, Rust, Java. Profiles live in `lib/engine/profiles.ts`: each one lists the node types that count as a function and as a decision, so the rule is readable, not folklore.
 
 ## Use
 
-The skill loads on its own when a task matches. Call the tool directly when you want numbers:
-
 ```
-assay()
-assay(paths: "src", threshold: 10)
-assay(paths: "src, tests", coverage: "existing")
-assay(mutation: "scan")
+assay(paths: "src", threshold: 10, coverage: "existing", duplication: true, mutation: "off")
+assay(mutation: "scan")                       # list mutation sites, cheap
+assay(mutation: "run", testCommand: "pytest -q")
+assay(coverage: "run", coverageCommand: "pytest --cov --cov-report=lcov")
 ```
-
-First run creates `plugins/assay/.venv` and installs the vendored packages. Set `ASSAY_PYTHON` to an interpreter path if no Python 3.11+ is reachable as `py -3`, `python` or `python3`.
 
 Skip the commit guard for one command with `ASSAY_SKIP=1`. That flag exists for a broken gate, not a failing one.
 
-## Support
+## Honest limits
 
-Clojure, Java, Go, TypeScript/JavaScript, Rust, Python. A missing language toolchain scores that language at 0% coverage, which fails the gate — install the toolchain or pass `coverage: "skip"` while bootstrapping.
+- The commit guard keys on `bash` calls that mention `git ... commit`. `git merge` and scripts pass. It is a speed bump, not a sandbox.
+- The record is not signed; anything that can write the project can forge it.
+- Mutation runs sequentially and in place, with the original text restored in `finally`. Default cap: 25 sites.
+- No Clojure profile: the shipped grammar set has no Clojure grammar.
 
 ## Licenses
 
-Plugin code: MIT. Vendored tools: 0BSD, see `vendor/*/LICENSE`. Upstream commits and local patches: `vendor/UPSTREAM.md`.
+Plugin code MIT. Vendored parser assets: see `assets/README.md`.

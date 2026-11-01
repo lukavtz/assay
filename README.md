@@ -29,16 +29,20 @@ A skill alone is advice. A model that is told to keep functions simple agrees an
 .omp-plugin/marketplace.json   catalog read by `omp plugin marketplace add`
 plugins/assay/               the installable plugin
   skills/assay/SKILL.md      the method
-  tools/assay/index.ts          assay: runs the checks, writes .metrics/assay.json
-  hooks/pre/commit-gate.ts     blocks a commit on a missing or failing gate
-  vendor/                      crapper, dryer, mutator (0BSD) at pinned commits
+  extensions/assay.ts        registers the assay tool
+  lib/tool.ts                checks, record, remediation
+  lib/engine/                parsing, complexity, coverage, duplication, mutation
+  assets/                    tree-sitter runtime + six grammars (MIT)
+  tests/                     bun tests
+  hooks/pre/commit-gate.ts   blocks a commit on a missing, failed or stale gate
 ```
 
 ## Docs
 
 - [Specification](docs/SPEC.md) — surfaces, contracts, acceptance criteria
-- [ADR 0001](docs/adr/0001-vendor-the-tools.md) — why the tools are vendored
+- [ADR 0001](docs/adr/0001-vendor-the-tools.md) — superseded: the vendored Python tools
 - [ADR 0002](docs/adr/0002-pass-fail-is-a-record.md) — why pass/fail is a persisted record
+- [ADR 0003](docs/adr/0003-own-engine.md) — own TypeScript engine, vendored tree-sitter, no Python
 
 ## Development
 
@@ -68,4 +72,4 @@ Consumers refresh with `omp plugin marketplace update assay` and `omp plugin upg
 
 ## License
 
-Plugin code MIT. Vendored tools 0BSD; see `plugins/assay/vendor/UPSTREAM.md` for upstream commits and the two Windows patches applied locally.
+Plugin code MIT. Vendored parser assets (tree-sitter, grammars) MIT; versions and licenses in `plugins/assay/assets/README.md`.

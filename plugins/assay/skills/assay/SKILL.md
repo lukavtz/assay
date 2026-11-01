@@ -35,17 +35,17 @@ Every change follows three phases in order. Do not skip ahead.
 
 Use the `assay` tool, not raw shell. It runs three checks and writes `.metrics/assay.json`:
 
-| Check | Tool | Rule |
-|---|---|---|
-| CRAP per function | `crapper` | score < 10 |
-| Structural duplication | `dryer` | no candidate at score ≥ 0.82 |
-| Mutation coverage | `mutator` | no surviving mutant |
+| Check | Rule |
+|---|---|
+| CRAP per function | score < 10 |
+| Structural duplication | no candidate at score ≥ 0.82 |
+| Mutation coverage | no surviving mutant |
 
 Start narrow, widen before commit:
 
 ```
 assay(paths: "src/foo.py")
-assay()                       # changed files, tests run
+assay()                       # whole project, coverage from disk
 assay(mutation: "scan")       # list mutation sites, cheap
 assay(mutation: "run")        # execute mutants, slow
 ```
